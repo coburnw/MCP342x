@@ -1,7 +1,7 @@
 # MCP342x
 Simple class based access to the MCP342x series A/D converters in Python
 
-## quick example to get a feel for its use:
+## quick example:
 
     import time                                                                                           
     import mcp342x                                                                           
