@@ -12,6 +12,7 @@ CMD_CONVERSION_READY = 0x00 # Conversion Complete: 0=data ready, 1=not_finished.
 CMD_CONVERSION_INITIATE = 0x80 # Initiate a new conversion(One-Shot Conversion mode only)
 
 CMD_CHANNEL_MASK = 0x60
+CMD_CHANNEL_OFFSET = 5
 CMD_CHANNEL_1 = 0x00 # Mux Channel-1
 CMD_CHANNEL_2 = 0x20 # Mux Channel-2
 CMD_CHANNEL_3 = 0x40 # Mux Channel-3
@@ -40,8 +41,12 @@ class ConversionNotReadyError(Exception):
 
 class ChannelMixin(object):
     '''access a/d through a channel object'''
-    def __init__(self, device, channel):
-        ''' channel mixin. non variety specific routines for channel'''
+    def __init__(self, device, channel_number):
+        '''
+        channel mixin. non variety specific routines for channel.
+        device is an initialized mcp342x instance
+        channel_number is the zero referenced mux channel number to access
+        '''
         self._device = device
 
         self._config = 0
@@ -50,7 +55,7 @@ class ChannelMixin(object):
         self._max_code = 0
 
         self._chan_number = 0
-        self._number(channel)
+        self._number(channel_number)
 
         self.gain = 1
         self.sps = 240
@@ -58,12 +63,17 @@ class ChannelMixin(object):
         return
 
     @property
+    def is_active(self):
+        '''returns true if the mux is set to this channel'''
+        return self._device.active_channel == self.channel_number
+
+    @property
     def channel_number(self):
-        ''' returns the mux channel this object controls'''
+        ''' returns the zero referenced mux channel this object controls'''
         return self._chan_number
 
     def _number(self, number):
-        ''' sets the mux channel for this object.  perhaps should be private'''
+        ''' sets the mux channel for this object.  Override in device specific class'''
         raise NotImplementedError
 
     @property
@@ -150,7 +160,7 @@ class ChannelMixin(object):
         self._device.initiate_conversion(self._config)
         return True
 
-    def get_raw(self):
+    def get_conversion_raw(self):
         ''' returns the latest conversion in semi raw two's complement binary'''
         not_ready, raw = self._device.get_conversion(self.sps)
         if not_ready:
@@ -158,9 +168,9 @@ class ChannelMixin(object):
 
         return raw
 
-    def get_volts(self):
+    def get_conversion_volts(self):
         ''' returns the latest conversion in Volts with pga settings applied'''
-        raw = self.get_raw()
+        raw = self.get_conversion_raw()
         volts = (raw * REFERENCE_VOLTAGE/self._max_code)/self._gain
         return volts
 
@@ -232,6 +242,11 @@ class Mcp342x(object):
         self._address = address
         self._config_cache = 0
         return
+
+    @property
+    def active_channel(self):
+        ''' returns the current mux channel setting'''
+        return (self._config_cache & CMD_CHANNEL_MASK) >> CMD_CHANNEL_OFFSET
 
     def initiate_conversion(self, config):
         ''' send conversion initiate command'''
