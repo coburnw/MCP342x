@@ -1,6 +1,8 @@
 # MCP342x
 Simple class based access to the MCP342x series A/D converters in Python
 
+Includes classes for the MCP3425, MCP3426, MCP3427, and MCP3428
+
 ## quick example:
 
     import time                                                                                           
@@ -17,19 +19,18 @@ Simple class based access to the MCP342x series A/D converters in Python
 
     #configure channel for 12bit continuous mode and exercise it                                           
     print('continuous mode')
-    first_input.sps = 240
-    first_input.gain = 1
+    first_input.sample_rate = 240
+    first_input.pga_gain = 1
     first_input.continuous = True
     
     first_input.start_conversion() # update device with current channel state and start acquisition        
     time.sleep(first_input.conversion_time)
-    volts = first_input.get_volts()
-    print('Chan{}: Volts={}'.format(first_input.channel_number, volts))
+    volts = first_input.get_conversion_volts()
+    print('Chan{}: Volts={}'.format(first_input.channel, volts))
    
 ## Notes
  * Uses smbus2
- * Expected to work with the MCP3425, MCP3426, MCP3427, and MCP3428 devices.
- * Tested with an MCP3426, primarily in continuous mode, on a raspberry pi.
+ * Tested with an MCP3426, primarily in continuous mode, on a raspberry pi zero w.
  * Naming conventions follow the Microchip [data sheet](http://ww1.microchip.com/downloads/en/DeviceDoc/22226a.pdf) as best as possible.
  * Module does not call time.sleep().  Timing is the responsibility of the application.
  * Raises ConversionNotReadyError if the not ready flag is found set while reading a conversion.

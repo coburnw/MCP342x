@@ -28,8 +28,8 @@ if __name__ == '__main__':
 
     #configure channel for 12bit continuous mode and exercize it
     print('continuous mode')
-    first_input.sps = 240
-    first_input.gain = 1
+    first_input.sample_rate = 240
+    first_input.pga_gain = 1
     first_input.continuous = True
     first_input.start_conversion() # update device with current channel state and start acquisition
     try:
@@ -37,34 +37,34 @@ if __name__ == '__main__':
         for i in range(0, 5):
             time.sleep(first_input.conversion_time)
             volts = first_input.get_conversion_volts()
-            print(' Chan{}: Volts={}'.format(first_input.channel_number, volts))
+            print(' Chan{}: Volts={}'.format(first_input.channel, volts))
 
-        print('Chan{} is_active = {}'.format(first_input.channel_number, first_input.is_active))
-        print('Chan{} is_active = {}'.format(second_input.channel_number, second_input.is_active))
+        print('Chan{} is_active = {}'.format(first_input.channel, first_input.is_active))
+        print('Chan{} is_active = {}'.format(second_input.channel, second_input.is_active))
 
     except mcp342x.ConversionNotReadyError:
         print('conversion not ready.  try waiting a bit longer between samples')
 
     # configure channel for 16bit one shot mode and exercise it.
     print('single shot mode')
-    second_input.sps = 15
-    second_input.gain = 8
+    second_input.sample_rate = 15
+    second_input.pga_gain = 8
     second_input.continuous = False
     try:
         for i in range(0, 5):
             second_input.start_conversion()  # start a single acquisition
             time.sleep(1)
             volts = second_input.get_conversion_volts()
-            print(' Chan{}: Volts={}'.format(second_input.channel_number, volts))
+            print(' Chan{}: Volts={}'.format(second_input.channel, volts))
 
-        print('Chan{} is_active = {}'.format(first_input.channel_number, first_input.is_active))
-        print('Chan{} is_active = {}'.format(second_input.channel_number, second_input.is_active))
+        print('Chan{} is_active = {}'.format(first_input.channel, first_input.is_active))
+        print('Chan{} is_active = {}'.format(second_input.channel, second_input.is_active))
 
         print('attempt conversion_time - 10%')
         second_input.start_conversion()  # start a single acquisition
         time.sleep(second_input.conversion_time - second_input.conversion_time*0.1)
         volts = second_input.get_conversion_volts()
-        print(' Chan{}: Volts={}'.format(second_input.channel_number, volts))
+        print(' Chan{}: Volts={}'.format(second_input.channel, volts))
 
     except mcp342x.ConversionNotReadyError:
         print('Exception: conversion not ready.  try waiting a bit longer between samples')

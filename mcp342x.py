@@ -47,42 +47,56 @@ class ChannelMixin(object):
         device is an initialized mcp342x instance
         channel_number is the zero referenced mux channel number to access
         '''
-        self._device = device
+
+        #create out local variables
+        super().__setattr__("_device", None)
+        super().__setattr__("_config", None)
+        super().__setattr__("_channel_number", None)
+        super().__setattr__("_pga_gain", None)
+        super().__setattr__("_sample_rate", None)
+        super().__setattr__("_max_code", None)
 
         self._config = 0
-        self._gain = 0
-        self._sps = 0
-        self._max_code = 0
 
-        self._chan_number = 0
-        self._number(channel_number)
+        self._device = device
+        self._channel(channel_number)
 
-        self.gain = 1
-        self.sps = 240
+        self.pga_gain = 1
+        self.sample_rate = 240
         self.continuous = True
         return
+
+    def __setattr__(self, attr, value):
+        if not hasattr(self, attr): # would this create a new attribute?
+            raise AttributeError(": {} has no attribute {}".format('ChannelMixin', attr))
+        super().__setattr__(attr, value)
+
+    @property
+    def config(self):
+        '''peek into current config settings for this channel.  for help in debug'''
+        return self._config
 
     @property
     def is_active(self):
         '''returns true if the mux is set to this channel'''
-        return self._device.active_channel == self.channel_number
+        return self._device.active_channel == self._channel_number
 
     @property
-    def channel_number(self):
+    def channel(self):
         ''' returns the zero referenced mux channel this object controls'''
-        return self._chan_number
+        return self._channel_number
 
-    def _number(self, number):
+    def _channel(self, number):
         ''' sets the mux channel for this object.  Override in device specific class'''
         raise NotImplementedError
 
     @property
-    def sps(self):
+    def sample_rate(self):
         ''' returns channel sample rate in samples per second'''
-        return self._sps
+        return self._sample_rate
 
-    @sps.setter
-    def sps(self, rate):
+    @sample_rate.setter
+    def sample_rate(self, rate):
         ''' sets channel sample rate: 240, 60, or 15 sps'''
         self._config &= ~CMD_SPS_MASK
         if rate == 15:
@@ -95,22 +109,17 @@ class ChannelMixin(object):
             self._config |= CMD_SPS_240
             self._max_code = 2047
         else:
-            raise ValueError('Possible sps settings are 15, 60, or 240 samples per second')
-        self._sps = rate
+            raise ValueError('Possible sample_rate settings are 15, 60, or 240 samples per second')
+        self._sample_rate = rate
         return
 
     @property
-    def config(self):
-        '''peek into current config settings for this channel.  for help in debug'''
-        return self._config
-
-    @property
-    def gain(self):
+    def pga_gain(self):
         ''' returns pga gain: 1, 2, 4, or 8'''
-        return self._gain
+        return self._pga_gain
 
-    @gain.setter
-    def gain(self, gain):
+    @pga_gain.setter
+    def pga_gain(self, gain):
         ''' sets pga gain for this channel: 1, 2, 4, or 8'''
         self._config &= ~CMD_GAIN_MASK
         if gain == 1:
@@ -123,8 +132,18 @@ class ChannelMixin(object):
             self._config |= CMD_GAIN_8
         else:
             raise ValueError('Possible pga gain settings are 1, 2, 4, or 8')
-        self._gain = gain
+        self._pga_gain = gain
         return
+
+    @property
+    def max_voltage(self):
+        ''' returns the maximum usable input in volts for this channel '''
+        return REFERENCE_VOLTAGE / self._pga_gain
+
+    @property
+    def lsb_voltage(self):
+        ''' returns the resolution in volts for this channel '''
+        return self.max_voltage / self._max_code
 
     @property
     def continuous(self):
@@ -148,7 +167,7 @@ class ChannelMixin(object):
         return estimated time in seconds to complete a single conversion
         assuming its present configuration
         '''
-        return 1/self.sps
+        return 1/self._sample_rate
 
     def start_conversion(self):
         '''
@@ -162,7 +181,7 @@ class ChannelMixin(object):
 
     def get_conversion_raw(self):
         ''' returns the latest conversion in semi raw two's complement binary'''
-        not_ready, raw = self._device.get_conversion(self.sps)
+        not_ready, raw = self._device.get_conversion(self._sample_rate)
         if not_ready:
             raise ConversionNotReadyError
 
@@ -170,26 +189,27 @@ class ChannelMixin(object):
 
     def get_conversion_volts(self):
         ''' returns the latest conversion in Volts with pga settings applied'''
-        raw = self.get_conversion_raw()
-        volts = (raw * REFERENCE_VOLTAGE/self._max_code)/self._gain
+        raw_value = self.get_conversion_raw()
+        volts = raw_value * self.lsb_voltage
         return volts
 
 class Mcp3425Channel(ChannelMixin):
     '''MCP3425 specific channel parameters'''
-    def _number(self, number):
+
+    def _channel(self, number):
         ''' sets the mux channel for this object.'''
         self._config &= ~CMD_CHANNEL_MASK
         if number == 0:
             self._config |= CMD_CHANNEL_1
         else:
             raise ValueError('Possible MCP3425 channel numbers are 0')
-        self._chan_number = number
+        self._channel_number = number
         return
 
 class Mcp3426Channel(ChannelMixin):
     '''MCP3426 specific channel parameters'''
 
-    def _number(self, number):
+    def _channel(self, number):
         ''' sets the mux channel for this object.'''
         self._config &= ~CMD_CHANNEL_MASK
         if number == 0:
@@ -198,13 +218,13 @@ class Mcp3426Channel(ChannelMixin):
             self._config |= CMD_CHANNEL_2
         else:
             raise ValueError('Possible MCP3426 channel numbers are 0 or 1')
-        self._chan_number = number
+        self._channel_number = number
         return
 
 class Mcp3427Channel(ChannelMixin):
     '''MCP3427 specific channel parameters'''
 
-    def _number(self, number):
+    def _channel(self, number):
         ''' sets the mux channel for this object.'''
         self._config &= ~CMD_CHANNEL_MASK
         if number == 0:
@@ -213,12 +233,13 @@ class Mcp3427Channel(ChannelMixin):
             self._config |= CMD_CHANNEL_2
         else:
             raise ValueError('Possible MCP3426 channel numbers are 0 or 1')
-        self._chan_number = number
+        self._channel_number = number
         return
 
 class Mcp3428Channel(ChannelMixin):
     '''MCP3428 specific channel parameters'''
-    def _number(self, number):
+
+    def _channel(self, number):
         ''' sets the mux channel for this object.'''
         self._config &= ~CMD_CHANNEL_MASK
         if number == 0:
@@ -231,7 +252,7 @@ class Mcp3428Channel(ChannelMixin):
             self._config |= CMD_CHANNEL_4
         else:
             raise ValueError('Possible MCP3426 channel numbers are 0, 1, 2, or 3')
-        self._chan_number = number
+        self._channel_number = number
         return
 
 class Mcp342x(object):
@@ -254,30 +275,30 @@ class Mcp342x(object):
         self._bus.write_byte(self._address, self._config_cache | CMD_CONVERSION_INITIATE)
         return True
 
-    def get_conversion(self, sps):
+    def get_conversion(self, rate):
         ''' get conversion if ready'''
-        not_ready = True
         raw_adc = 0
 
         data = self._bus.read_i2c_block_data(self._address, self._config_cache, 3)
         status = data[2]
         if (status & CMD_CONVERSION_MASK) == CMD_CONVERSION_READY:
             not_ready = False
-            #print('status={:0b}, data0={}, data1={}'.format(status, data[0], data[1]))
-            if sps == 240:
+            #print('status={:0b}, data0={:0x}, data1={:0x}'.format(status, data[0], data[1]))
+            if rate == 240:
                 raw_adc = ((data[0] & 0x0F) * 256) + data[1]
                 if raw_adc > 2047:
                     raw_adc -= 4096
-            elif sps == 60:
+            elif rate == 60:
                 raw_adc = ((data[0] & 0x3F) * 256) + data[1]
                 if raw_adc > 8191:
                     raw_adc -= 16384
-            elif sps == 15:
+            elif rate == 15:
                 raw_adc = (data[0] * 256) + data[1]
                 if raw_adc > 32767:
                     raw_adc -= 65536
             else:
                 pass
         else:
-            pass
+            not_ready = True
+
         return not_ready, raw_adc
