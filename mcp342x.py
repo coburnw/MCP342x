@@ -34,9 +34,33 @@ CMD_GAIN_2 = 0x01 # PGA Gain = 2V/V
 CMD_GAIN_4 = 0x02 # PGA Gain = 4V/V
 CMD_GAIN_8 = 0x03 # PGA Gain = 8V/V
 
-class ConversionNotReadyError(Exception):
+class Error(Exception):
+    ERROR_NONE = 0
+    ERROR_WARN = 1
+    ERROR_CRITICAL = 2
+
+    level = ERROR_NONE
+    name = 'No Error'
+    description = 'all ok'
+    resolution = 'nothing to resolve'
+    pass
+
+class ConversionNotReadyError(Error):
     '''ConversionNotReady exception: devices conversion value is not current.
     Maybe you are requesting data faster than the device can acquire.'''
+    level = Error.ERROR_WARN
+    name = 'Conversion not Ready'
+    description = 'conversion value is not current'
+    resolution = 'Maybe you are requesting data faster than the device can acquire'
+    pass
+
+class I2CBussError(Error):
+    '''I2C Buss exception: Lost communication with A/D.
+    Check cabling, power, etc to A/D device.'''
+    level = Error.ERROR_CRITICAL
+    name = 'I2C Buss Error'
+    description = 'Error communicating with A/D'
+    resolution = 'Check cabling, power, device address, etc to device'
     pass
 
 class ChannelMixin(object):
@@ -177,6 +201,7 @@ class ChannelMixin(object):
         trigger a single conversion and allow chip to enter low power mode.
         '''
         self._device.initiate_conversion(self._config)
+
         return True
 
     def get_conversion_raw(self):
@@ -272,14 +297,29 @@ class Mcp342x(object):
     def initiate_conversion(self, config):
         ''' send conversion initiate command'''
         self._config_cache = config
-        self._bus.write_byte(self._address, self._config_cache | CMD_CONVERSION_INITIATE)
+
+        try:
+            self._bus.write_byte(self._address, self._config_cache | CMD_CONVERSION_INITIATE)
+        except OSError as e:
+            if e.errno == 121: #Remote I/O error
+                raise I2CBussError
+            else:
+                raise
+
         return True
 
     def get_conversion(self, rate):
         ''' get conversion if ready'''
         raw_adc = 0
 
-        data = self._bus.read_i2c_block_data(self._address, self._config_cache, 3)
+        try:
+            data = self._bus.read_i2c_block_data(self._address, self._config_cache, 3)
+        except OSError as e:
+            if e.errno == 121:
+                raise I2CBussError
+            else:
+                raise
+
         status = data[2]
         if (status & CMD_CONVERSION_MASK) == CMD_CONVERSION_READY:
             not_ready = False
