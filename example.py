@@ -11,16 +11,16 @@ if __name__ == '__main__':
 
     # get access to a specific device on a bus
     i2c_bus_number = 1
-    device_address = 0x68
-    my_adc = mcp342x.Mcp342x(i2c_bus_number, device_address)
+    device_address = 0x6D
+    my_adc = mcp342x.Mcp3428(i2c_bus_number, device_address)
 
     # add an input channel to the device
     first_channel_number = 0
-    first_input = mcp342x.Mcp3426Channel(my_adc, first_channel_number)
+    first_input = mcp342x.Channel(my_adc, first_channel_number)
 
     # add a second input channel to the device
-    second_channel_number = 1
-    second_input = mcp342x.Mcp3426Channel(my_adc, second_channel_number)
+    second_channel_number = 4
+    second_input = mcp342x.Channel(my_adc, second_channel_number)
 
     # the mcp3426 only has two inputs, try adding a third
     #third_channel_number = 2

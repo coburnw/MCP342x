@@ -63,8 +63,8 @@ class I2CBussError(Error):
     resolution = 'Check cabling, power, device address, etc to device'
     pass
 
-class ChannelMixin(object):
-    '''access a/d through a channel object'''
+class Channel(object):
+    '''access a/d device through a channel object'''
     def __init__(self, device, channel_number):
         '''
         channel mixin. non variety specific routines for channel.
@@ -83,16 +83,16 @@ class ChannelMixin(object):
         self._config = 0
 
         self._device = device
-        self._channel(channel_number)
-
+        self.channel = channel_number
+        
         self.pga_gain = 1
         self.sample_rate = 240
         self.continuous = True
         return
 
     def __setattr__(self, attr, value):
-        if not hasattr(self, attr): # would this create a new attribute?
-            raise AttributeError(": {} has no attribute {}".format('ChannelMixin', attr))
+        if not hasattr(self, attr): # raise if this would create a new attribute
+            raise AttributeError(": {} has no attribute {}".format('Channel', attr))
         super().__setattr__(attr, value)
 
     @property
@@ -110,9 +110,26 @@ class ChannelMixin(object):
         ''' returns the zero referenced mux channel this object controls'''
         return self._channel_number
 
-    def _channel(self, number):
-        ''' sets the mux channel for this object.  Override in device specific class'''
-        raise NotImplementedError
+    @channel.setter
+    def channel(self, number):
+        ''' sets the mux channel for this object.'''
+
+        # verify number is valid for this adc 
+        self._device.validate_channel(number)
+
+        # validate_channel raises bad value.  must be ok...
+        self._config &= ~CMD_CHANNEL_MASK
+        if number == 0:
+            self._config |= CMD_CHANNEL_1
+        elif number == 1:
+            self._config |= CMD_CHANNEL_2
+        elif number == 2:
+            self._config |= CMD_CHANNEL_3
+        elif number == 3:
+            self._config |= CMD_CHANNEL_4
+            
+        self._channel_number = number
+        return
 
     @property
     def sample_rate(self):
@@ -218,68 +235,6 @@ class ChannelMixin(object):
         volts = raw_value * self.lsb_voltage
         return volts
 
-class Mcp3425Channel(ChannelMixin):
-    '''MCP3425 specific channel parameters'''
-
-    def _channel(self, number):
-        ''' sets the mux channel for this object.'''
-        self._config &= ~CMD_CHANNEL_MASK
-        if number == 0:
-            self._config |= CMD_CHANNEL_1
-        else:
-            raise ValueError('Possible MCP3425 channel numbers are 0')
-        self._channel_number = number
-        return
-
-class Mcp3426Channel(ChannelMixin):
-    '''MCP3426 specific channel parameters'''
-
-    def _channel(self, number):
-        ''' sets the mux channel for this object.'''
-        self._config &= ~CMD_CHANNEL_MASK
-        if number == 0:
-            self._config |= CMD_CHANNEL_1
-        elif number == 1:
-            self._config |= CMD_CHANNEL_2
-        else:
-            raise ValueError('Possible MCP3426 channel numbers are 0 or 1')
-        self._channel_number = number
-        return
-
-class Mcp3427Channel(ChannelMixin):
-    '''MCP3427 specific channel parameters'''
-
-    def _channel(self, number):
-        ''' sets the mux channel for this object.'''
-        self._config &= ~CMD_CHANNEL_MASK
-        if number == 0:
-            self._config |= CMD_CHANNEL_1
-        elif number == 1:
-            self._config |= CMD_CHANNEL_2
-        else:
-            raise ValueError('Possible MCP3426 channel numbers are 0 or 1')
-        self._channel_number = number
-        return
-
-class Mcp3428Channel(ChannelMixin):
-    '''MCP3428 specific channel parameters'''
-
-    def _channel(self, number):
-        ''' sets the mux channel for this object.'''
-        self._config &= ~CMD_CHANNEL_MASK
-        if number == 0:
-            self._config |= CMD_CHANNEL_1
-        elif number == 1:
-            self._config |= CMD_CHANNEL_2
-        elif number == 2:
-            self._config |= CMD_CHANNEL_3
-        elif number == 3:
-            self._config |= CMD_CHANNEL_4
-        else:
-            raise ValueError('Possible MCP3426 channel numbers are 0, 1, 2, or 3')
-        self._channel_number = number
-        return
-
 class Mcp342x(object):
     ''' hardware access to the chip'''
     def __init__(self, bus, address=DEFAULT_ADDRESS):
@@ -294,6 +249,11 @@ class Mcp342x(object):
         ''' returns the current mux channel setting'''
         return (self._config_cache & CMD_CHANNEL_MASK) >> CMD_CHANNEL_OFFSET
 
+    def validate_channel(self, channel):
+        ''' overide with your adc's channel validation check. Raise ValueError if out of bounds '''
+        ''' validates the mux channel for this version adc.'''
+        return
+    
     def initiate_conversion(self, config):
         ''' send conversion initiate command'''
         self._config_cache = config
@@ -342,3 +302,39 @@ class Mcp342x(object):
             not_ready = True
 
         return not_ready, raw_adc
+
+class Mcp3425(Mcp342x):
+    '''MCP3425 specific channel parameters'''
+
+    def validate_channel(self, number):
+        ''' validates the mux channel for this version adc.'''
+        if number != 0:
+            raise ValueError('Possible MCP3425 channel numbers are 0')
+        return
+
+class Mcp3426(Mcp342x):
+    '''MCP3426 specific channel parameters'''
+
+    def validate_channel(self, number):
+        ''' validates the mux channel for this version adc.'''
+        if not 0 < number < 2:
+            raise ValueError('Possible MCP3426 channel numbers are 0 and 1')
+        return
+
+class Mcp3427(Mcp342x):
+    '''MCP3427 specific channel parameters (electrically same as the mcp3426, different package)'''
+
+    def validate_channel(self, number):
+        ''' validates the mux channel for this version adc.'''
+        if not 0 <= number < 2:
+            raise ValueError('Possible MCP3427 channel numbers are 0 and 1')
+        return
+
+class Mcp3428(Mcp342x):
+    '''MCP3428 specific channel parameters'''
+
+    def validate_channel(self, number):
+        ''' validates the mux channel for this version adc.'''
+        if not 0 <= number < 4:
+            raise ValueError('Possible MCP3428 channel numbers are 0, 1, 2, and 3')
+        return
