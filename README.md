@@ -11,11 +11,11 @@ Includes classes for the MCP3425, MCP3426, MCP3427, and MCP3428
     # get access to a specific device on a bus                                                             
     i2c_bus_number = 1
     device_address = 0x68
-    my_adc = mcp342x.Mcp342x(i2c_bus_number, device_address)
+    my_adc = mcp342x.Mcp3426(i2c_bus_number, device_address)
 
     # add an input channel to the device                                                                   
-    first_channel_number = 0
-    first_input = mcp342x.Mcp3426Channel(my_adc, first_channel_number)
+    channel_number = 0
+    first_input = mcp342x.Channel(my_adc, channel_number)
 
     #configure channel for 12bit continuous mode and exercise it                                           
     print('continuous mode')
@@ -27,12 +27,15 @@ Includes classes for the MCP3425, MCP3426, MCP3427, and MCP3428
     time.sleep(first_input.conversion_time)
     volts = first_input.get_conversion_volts()
     print('Chan{}: Volts={}'.format(first_input.channel, volts))
-   
-## Notes
+
+## Dependencies
  * Uses smbus2
- * Tested with an MCP3426, primarily in continuous mode, on a raspberry pi zero w.
+
+## Notes
+ * Tested with both an MCP3426 and MCP3428, primarily in continuous mode, on a raspberry pi zero w.
  * Naming conventions follow the Microchip [data sheet](http://ww1.microchip.com/downloads/en/DeviceDoc/22226a.pdf) as best as possible.
  * Module does not call time.sleep().  Timing is the responsibility of the application.
+ * Raises I2CBussError with some help on i2c related OSError.
  * Raises ConversionNotReadyError if the not ready flag is found set while reading a conversion.
  
  ## Todo
