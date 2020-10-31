@@ -26,7 +26,7 @@ Includes classes for the MCP3425, MCP3426, MCP3427, and MCP3428
     first_input.start_conversion() # update device with current channel state and start acquisition        
     time.sleep(first_input.conversion_time)
     volts = first_input.get_conversion_volts()
-    print('Chan{}: Volts={}'.format(first_input.channel, volts))
+    print('Chan{}: Volts={}'.format(first_input.number, volts))
 
 ## Dependencies
  * Uses smbus2
