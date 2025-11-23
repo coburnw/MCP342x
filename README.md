@@ -1,8 +1,14 @@
 # MCP342x
-Simple class based access to the MCP342x series A/D converters in Python
+Simple class based access to Microchip's MCP342x series A/D converters in Python
 
 Includes classes for the MCP3425, MCP3426, MCP3427, and MCP3428
 
+# Install
+ * ''git clone https://github.com/coburnw/MCP342x''
+ * ''pip install smbus2''
+ * ''cd MCP342x''
+ * ''pip install -e .''
+  
 ## quick example:
 
     import time                                                                                           

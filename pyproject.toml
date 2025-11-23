@@ -1,0 +1,18 @@
+[project]
+name = "MCP342x"
+version = "0.0.1"
+authors = [
+  { name="Coburn Wightman", email="coburnw@halfstop.top" },
+]
+description = "Class based access to Microchip's MCP342x series A/D Converters in Python"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Private :: Do Not Upload",
+]
+license = {text = "MIT License"}
+
+[project.urls]
+Homepage = "https://github.com/coburnw/MCP342x"

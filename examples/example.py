@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     # get access to a specific device on a bus
     i2c_bus_number = 1
-    device_address = 0x6D
+    device_address = 0x68
     my_adc = mcp342x.Mcp3428(i2c_bus_number, device_address)
 
     # add an input channel to the device
