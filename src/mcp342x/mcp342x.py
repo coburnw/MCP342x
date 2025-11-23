@@ -1,6 +1,6 @@
 ''' mc3426 a/d converter'''
 
-import smbus2
+# import smbus2
 
 # I2C address of the device
 DEFAULT_ADDRESS = 0x68
@@ -237,9 +237,9 @@ class Channel(object):
 
 class Mcp342x(object):
     ''' hardware access to the chip'''
-    def __init__(self, bus, address=DEFAULT_ADDRESS):
-        '''bus is integer id of i2c bus, address is integer address of chip on that bus'''
-        self._bus = smbus2.SMBus(bus)
+    def __init__(self, smbus, address=DEFAULT_ADDRESS):
+        '''smbus is an SMBus object, address is integer address of chip on that bus'''
+        self._bus = smbus
         self._address = address
         self._config_cache = 0
         return
@@ -317,7 +317,7 @@ class Mcp3426(Mcp342x):
 
     def validate_channel_number(self, channel_number):
         ''' validates the mux channel for this version adc.'''
-        if not 0 < channel_number < 2:
+        if not 0 <= channel_number < 2:
             raise ValueError('Possible MCP3426 channel numbers are 0 and 1')
         return
 
